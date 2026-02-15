@@ -1,0 +1,17 @@
+{
+  "name": "cyber-feed-bot",
+  "version": "1.0.0",
+  "description": "Telegram bot for CVE and cybersecurity news via Azure Functions",
+  "main": "src/functions/*.js",
+  "scripts": {
+    "start": "func start",
+    "test": "node src/test.js"
+  },
+  "dependencies": {
+    "@azure/functions": "^4.11.2",
+    "rss-parser": "^3.13.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
