@@ -63,8 +63,8 @@ async function fetchJsonFeed(feed) {
                 category: feed.category,
                 pubDate: v.dateAdded ? new Date(v.dateAdded) : new Date(),
                 description: v.shortDescription
-                    ? v.shortDescription.substring(0, 200)
-                    : `${v.vulnerabilityName || ''}`.substring(0, 200),
+                    ? v.shortDescription.substring(0, 500)
+                    : `${v.vulnerabilityName || ''}`.substring(0, 500),
             }));
     } catch (error) {
         console.warn(`⚠️  Failed to fetch ${feed.name}: ${error.message}`);
@@ -87,7 +87,7 @@ async function fetchFeed(feed) {
             category: feed.category,
             pubDate: item.pubDate ? new Date(item.pubDate) : new Date(),
             description: item.contentSnippet
-                ? item.contentSnippet.substring(0, 200)
+                ? item.contentSnippet.substring(0, 500)
                 : '',
         }));
 
