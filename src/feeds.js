@@ -14,11 +14,7 @@ const FEEDS = [
     url: 'https://feeds.feedburner.com/securityweek',
     category: 'news',
   },
-  {
-    name: '📋 NVD Recent',
-    url: 'https://nvd.nist.gov/feeds/xml/cve/misc/nvd-rss.xml',
-    category: 'cve',
-  },
+  // NVD removed: spams old CVEs (lists by modification date, not publish date)
   {
     name: '📰 The Hacker News',
     url: 'https://feeds.feedburner.com/TheHackersNews',
