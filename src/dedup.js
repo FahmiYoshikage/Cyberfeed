@@ -63,4 +63,4 @@ function reset() {
     sentItems.clear();
 }
 
-module.exports = { isNew, markSent, cleanup, getCacheSize, reset };
+module.exports = { isNew, markSent, cleanup, getCacheSize, reset, clearCache: reset };

@@ -1,7 +1,7 @@
 const { fetchAllFeeds } = require('./rssParser');
-const { escapeMarkdownV2 } = require('./telegram');
+const { escapeMarkdownV2, sendItems } = require('./telegram');
 const { FEEDS } = require('./feeds');
-const { getCacheSize } = require('./dedup');
+const { isNew, markSent, cleanup, getCacheSize, clearCache } = require('./dedup');
 
 // Bot start time for uptime tracking
 const BOT_START_TIME = new Date();
@@ -30,6 +30,8 @@ async function handleCommand(command, from) {
             return handleSources();
         case '/status':
             return handleStatus();
+        case '/refresh':
+            return { type: 'refresh' };
         default:
             return handleUnknown(cmd);
     }
@@ -75,6 +77,7 @@ function handleHelp() {
         '🔹 /news — Berita cybersecurity terbaru',
         '🔹 /sources — Daftar semua sumber feed',
         '🔹 /status — Status \\& statistik bot',
+        '🔹 /refresh — 🔄 Refresh semua feed sekarang',
         '',
         '💡 _Bot juga otomatis kirim berita baru setiap menit\\._',
     ].join('\n');
