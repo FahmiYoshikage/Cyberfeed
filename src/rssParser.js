@@ -4,6 +4,12 @@ const { FEEDS } = require('./feeds');
 // Only include articles from the last 7 days
 const MAX_AGE_DAYS = 7;
 
+// Max items per feed to prevent one source from dominating
+const MAX_ITEMS_PER_FEED = 5;
+
+// For NVD: only include CVEs from recent years
+const MIN_CVE_YEAR = new Date().getFullYear() - 1; // current year and last year
+
 const parser = new RssParser({
     timeout: 15000,
     headers: {
@@ -13,9 +19,28 @@ const parser = new RssParser({
 });
 
 /**
+ * Extract CVE year from title (e.g., "CVE-2023-12345" -> 2023)
+ */
+function getCveYear(title) {
+    const match = title.match(/CVE-(\d{4})-/i);
+    return match ? parseInt(match[1], 10) : null;
+}
+
+/**
+ * Filter NVD items: only keep CVEs from recent years
+ */
+function filterNvdItems(items) {
+    return items.filter((item) => {
+        const year = getCveYear(item.title);
+        // If no CVE ID found, keep the item
+        if (year === null) return true;
+        // Only keep CVEs from MIN_CVE_YEAR onwards
+        return year >= MIN_CVE_YEAR;
+    });
+}
+
+/**
  * Fetch CISA KEV JSON feed.
- * @param {Object} feed - Feed config
- * @returns {Promise<Array>} Array of parsed items
  */
 async function fetchJsonFeed(feed) {
     try {
@@ -26,19 +51,21 @@ async function fetchJsonFeed(feed) {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
 
-        // CISA KEV format: { vulnerabilities: [ { cveID, vendorProject, product, ... } ] }
         const vulns = data.vulnerabilities || [];
-        // Only take the most recent 20
-        return vulns.slice(-20).reverse().map((v) => ({
-            title: `${v.cveID} - ${v.vendorProject} ${v.product}`,
-            link: `https://nvd.nist.gov/vuln/detail/${v.cveID}`,
-            source: feed.name,
-            category: feed.category,
-            pubDate: v.dateAdded ? new Date(v.dateAdded) : new Date(),
-            description: v.shortDescription
-                ? v.shortDescription.substring(0, 200)
-                : `${v.vulnerabilityName || ''}`.substring(0, 200),
-        }));
+        // Only take the most recent entries, limited
+        return vulns
+            .slice(-MAX_ITEMS_PER_FEED)
+            .reverse()
+            .map((v) => ({
+                title: `${v.cveID} - ${v.vendorProject} ${v.product}`,
+                link: `https://nvd.nist.gov/vuln/detail/${v.cveID}`,
+                source: feed.name,
+                category: feed.category,
+                pubDate: v.dateAdded ? new Date(v.dateAdded) : new Date(),
+                description: v.shortDescription
+                    ? v.shortDescription.substring(0, 200)
+                    : `${v.vulnerabilityName || ''}`.substring(0, 200),
+            }));
     } catch (error) {
         console.warn(`⚠️  Failed to fetch ${feed.name}: ${error.message}`);
         return [];
@@ -47,16 +74,13 @@ async function fetchJsonFeed(feed) {
 
 /**
  * Fetch and parse a single RSS feed.
- * @param {Object} feed - Feed config { name, url, category }
- * @returns {Promise<Array>} Array of parsed items
  */
 async function fetchFeed(feed) {
-    // Route JSON feeds to dedicated handler
     if (feed.isJson) return fetchJsonFeed(feed);
 
     try {
         const result = await parser.parseURL(feed.url);
-        return (result.items || []).map((item) => ({
+        let items = (result.items || []).map((item) => ({
             title: item.title || 'No title',
             link: item.link || '',
             source: feed.name,
@@ -66,6 +90,14 @@ async function fetchFeed(feed) {
                 ? item.contentSnippet.substring(0, 200)
                 : '',
         }));
+
+        // Special filter for NVD: only recent CVE years
+        if (feed.name.includes('NVD')) {
+            items = filterNvdItems(items);
+        }
+
+        // Limit items per feed
+        return items.slice(0, MAX_ITEMS_PER_FEED);
     } catch (error) {
         console.warn(`⚠️  Failed to fetch ${feed.name}: ${error.message}`);
         return [];
@@ -74,8 +106,6 @@ async function fetchFeed(feed) {
 
 /**
  * Fetch all configured RSS feeds in parallel.
- * Uses Promise.allSettled so one failure doesn't block others.
- * @returns {Promise<Array>} All items from all feeds, sorted newest first
  */
 async function fetchAllFeeds() {
     const results = await Promise.allSettled(FEEDS.map(fetchFeed));
@@ -92,7 +122,9 @@ async function fetchAllFeeds() {
 
     const filtered = allItems.length - recentItems.length;
     if (filtered > 0) {
-        console.log(`🗓️  Filtered out ${filtered} old articles (older than ${MAX_AGE_DAYS} days)`);
+        console.log(
+            `🗓️  Filtered out ${filtered} old articles (older than ${MAX_AGE_DAYS} days)`
+        );
     }
 
     // Sort by date, newest first
