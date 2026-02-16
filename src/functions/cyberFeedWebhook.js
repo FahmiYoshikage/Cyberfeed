@@ -77,12 +77,11 @@ async function handleRefresh(botToken, chatId, context) {
             return;
         }
 
-        // 4. Take top 10 items and send them
-        const batch = allItems.slice(0, 10);
-        const sentCount = await sendItems(botToken, chatId, batch);
+        // 4. Send all items
+        const sentCount = await sendItems(botToken, chatId, allItems);
 
         // 5. Mark all as sent
-        for (const item of batch) {
+        for (const item of allItems) {
             markSent(item.link);
         }
         cleanup();

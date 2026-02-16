@@ -37,15 +37,12 @@ app.timer('cyberFeedTimer', {
                 return;
             }
 
-            // 3. Limit batch size to avoid overwhelming Telegram (max 20 per run)
-            const batch = newItems.slice(0, 20);
+            // 3. Send to Telegram
+            context.log(`📤 Sending ${newItems.length} items to Telegram...`);
+            const sentCount = await sendItems(botToken, chatId, newItems);
 
-            // 4. Send to Telegram
-            context.log(`📤 Sending ${batch.length} items to Telegram...`);
-            const sentCount = await sendItems(botToken, chatId, batch);
-
-            // 5. Mark all batch items as sent
-            for (const item of batch) {
+            // 4. Mark all items as sent
+            for (const item of newItems) {
                 markSent(item.link);
             }
 
